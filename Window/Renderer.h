@@ -32,4 +32,5 @@ private:
 	ID3D11Buffer* m_pIndexBuffer = NULL;
 	ID3D11VertexShader* m_pVertexShader = nullptr;
 	ID3D11PixelShader* m_pPixelShader = nullptr;
+	ID3D11InputLayout* m_pInputLayout = nullptr;
 };
