@@ -5,7 +5,9 @@ Input::Input(HINSTANCE hinst, HWND hwnd, int screenW, int screenH) : m_hinst(hin
 	m_mouseState = XMFLOAT3(0.0f, 0.0f, 0.0f);
 }
 
-Input::~Input() {};
+Input::~Input() {
+
+};
 
 bool Input::readKB() {
 	return true;
@@ -35,7 +37,9 @@ XMFLOAT3 Input::getMouseState() {
 
 	BYTE keyState[256];
 	auto st = GetKeyboardState(keyState);
-
+	if (!st) {
+		return XMFLOAT3(0.0f, 0.0f, 0.0f);
+	}
 	if (keyState[VK_UP] & 0x80) {
 		mouseDelta.z = 1.0f;
 		return mouseDelta;

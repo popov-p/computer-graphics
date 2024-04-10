@@ -10,7 +10,20 @@ struct Vertex {
 };
 
 
-void Renderer::ReleasePointers() {
+Renderer::~Renderer() {
+	UINT flags = 0;
+	if (m_pDevice) {
+		flags = m_pDevice->GetCreationFlags();
+	}
+	if (flags & D3D11_CREATE_DEVICE_DEBUG) {
+		ID3D11Debug* pDebug = nullptr;
+		m_pDevice->QueryInterface(__uuidof(ID3D11Debug), reinterpret_cast<void**>(&pDebug));
+		if (pDebug) {
+			pDebug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
+			pDebug->Release();
+		}
+	}
+
 	SAFE_RELEASE(m_pDevice);
 	SAFE_RELEASE(m_pDeviceContext);
 	SAFE_RELEASE(m_pSwapChain);
@@ -23,6 +36,7 @@ void Renderer::ReleasePointers() {
 	SAFE_RELEASE(m_pRasterizerState);
 	SAFE_RELEASE(m_pWorldMatrixBuffer);
 	SAFE_RELEASE(m_pSceneMatrixBuffer);
+
 }
 
 void Renderer::RenderFrame() {
@@ -178,9 +192,6 @@ bool Renderer::Init(HWND hWnd, Camera* pCamera, Input* pInput) {
 			result = S_FALSE;
 	}
 
-	if (FAILED(result)) {
-		ReleasePointers();
-	}
 
 	return SUCCEEDED(result);
 }

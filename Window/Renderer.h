@@ -23,14 +23,13 @@ public:
 	HRESULT SetupBackBuffer();
 	bool Resize(UINT width, UINT height);
 	void RenderFrame();
-	void ReleasePointers();
 
 	/*lab-2*/
 	HRESULT InitScene();
 
 	/*lab-3*/
 	bool GetState();
-
+	~Renderer();
 private:
 	/*lab-1*/
 	ID3D11Device* m_pDevice = NULL;

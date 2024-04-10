@@ -28,7 +28,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 		if (pRenderer->GetState())
 			pRenderer->RenderFrame();
 	}
-	pRenderer->ReleasePointers();
+	delete pRenderer;
 
 	return (int)msg.wParam;
 }
