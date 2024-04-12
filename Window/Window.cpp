@@ -1,214 +1,116 @@
-// Window.cpp : Defines the entry point for the application.
-//
+﻿#include "renderer.h"
 
-#include "framework.h"
-#include "Window.h"
-#include "Renderer.h"
-#define MAX_LOADSTRING 100
+HINSTANCE g_hInst = nullptr;
+UINT WindowWidth = 1280;
+UINT WindowHeight = 720;
 
-// Global Variables:
-HINSTANCE hInst;                                // current instance
-WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
-WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+HRESULT InitWindow(HINSTANCE hInstance, int nCmdShow);
+LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
-auto WindowWidth = 1280; // Window width
-auto WindowHeight = 720; // Window height
-Renderer* pRenderer; //Pointer to a renderer
+Renderer* pRenderer = nullptr;
 
-// Forward declarations of functions included in this code module:
-ATOM                MyRegisterClass(HINSTANCE hInstance);
-BOOL                InitInstance(HINSTANCE, int);
-LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
-
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPWSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
+int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
-    UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
+	UNREFERENCED_PARAMETER(hPrevInstance);
+	UNREFERENCED_PARAMETER(lpCmdLine);
 
-    // TODO: Place code here.
+	if (FAILED(InitWindow(hInstance, nCmdShow)))
+		return 0;
 
-    // Initialize global strings
-    LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-    LoadStringW(hInstance, IDC_WINDOW, szWindowClass, MAX_LOADSTRING);
-    MyRegisterClass(hInstance);
+	MSG msg = { 0 };
+	while (WM_QUIT != msg.message)
+	{
+		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		if (pRenderer->GetState())
+			pRenderer->RenderFrame();
+	}
+	delete pRenderer;
 
-    // Perform application initialization:
-    if (!InitInstance (hInstance, nCmdShow))
-    {
-        return FALSE;
-    }
-
-    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WINDOW));
-
-    MSG msg;
-
-    bool exit = false;
-    while (!exit) {
-        if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-            if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg)) {
-                TranslateMessage(&msg);
-                DispatchMessage(&msg);
-            }
-            if (msg.message == WM_QUIT) {
-                exit = true;
-            }
-            pRenderer->RenderFrame();
-        }
-        OutputDebugString(_T("Render\n"));
-    }
-    pRenderer->ReleasePointers();
-    return (int) msg.wParam;
+	return (int)msg.wParam;
 }
 
+HRESULT InitWindow(HINSTANCE hInstance, int nCmdShow) {
+	WNDCLASSEX wcex;
+	wcex.cbSize = sizeof(WNDCLASSEX);
+	wcex.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+	wcex.lpfnWndProc = WndProc;
+	wcex.cbClsExtra = 0;
+	wcex.cbWndExtra = 0;
+	wcex.hInstance = hInstance;
+	wcex.hIcon = 0;
+	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
+	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	wcex.lpszMenuName = nullptr;
+	wcex.lpszClassName = L"WindowClass";
+	wcex.hIconSm = 0;
 
+	if (!RegisterClassEx(&wcex))
+		return E_FAIL;
 
-//
-//  FUNCTION: MyRegisterClass()
-//
-//  PURPOSE: Registers the window class.
-//
-ATOM MyRegisterClass(HINSTANCE hInstance)
-{
-    WNDCLASSEXW wcex;
+	g_hInst = hInstance;
+	HWND hWnd = CreateWindow(L"WindowClass", L"Window",
+		WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr,
+		nullptr, hInstance, nullptr);
+	if (!hWnd) {
+		return E_FAIL;
+	}
 
-    wcex.cbSize = sizeof(WNDCLASSEX);
+	ShowWindow(hWnd, nCmdShow);
+	SetForegroundWindow(hWnd);
+	SetFocus(hWnd);
+	UpdateWindow(hWnd);
 
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc    = WndProc;
-    wcex.cbClsExtra     = 0;
-    wcex.cbWndExtra     = 0;
-    wcex.hInstance      = hInstance;
-    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WINDOW));
-    wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_WINDOW);
-    wcex.lpszClassName  = szWindowClass;
-    wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+	{
+		RECT rc;
+		rc.left = 0;
+		rc.right = WindowWidth;
+		rc.top = 0;
+		rc.bottom = WindowHeight;
 
-    return RegisterClassExW(&wcex);
+		AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, TRUE);
+
+		MoveWindow(hWnd, 100, 100, rc.right - rc.left, rc.bottom - rc.top, TRUE);
+
+	}
+
+	pRenderer = new Renderer();
+	if (!pRenderer->Init(hWnd, new Camera, new Input(hInstance, hWnd, WindowWidth, WindowHeight))) {
+		delete pRenderer;
+		return E_FAIL;
+	}
+
+	return S_OK;
 }
 
-//
-//   FUNCTION: InitInstance(HINSTANCE, int)
-//
-//   PURPOSE: Saves instance handle and creates main window
-//
-//   COMMENTS:
-//
-//        In this function, we save the instance handle in a global variable and
-//        create and display the main program window.
-//
-BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
-{
-   hInst = hInstance; // Store instance handle in our global variable
-
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
-
-   if (!hWnd)
-   {
-      return FALSE;
-   }
-
-   pRenderer = new Renderer();
-   if (!pRenderer->Init(hWnd)) {
-       delete pRenderer;
-       return FALSE;
-   }
-
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
-
-   //Adjust window size
-   {
-       RECT rc;
-       rc.left = 0;
-       rc.right = WindowWidth;
-       rc.top = 0;
-       rc.bottom = WindowHeight;
-
-       AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, TRUE);
-
-       MoveWindow(hWnd, 100, 100, rc.right - rc.left, rc.bottom - rc.top, TRUE);
-   }
-   return TRUE;
-}
-
-//
-//  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  PURPOSE: Processes messages for the main window.
-//
-//  WM_COMMAND  - process the application menu
-//  WM_PAINT    - Paint the main window
-//  WM_DESTROY  - post a quit message and return
-//
-//
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    switch (message)
-    {
-    case WM_SIZE:
-        if (pRenderer != NULL) {
-            RECT rc;
-            GetClientRect(hWnd, &rc);
-            pRenderer->Resize(rc.right - rc.left, rc.bottom - rc.top);
-        }
-        break;
-    case WM_COMMAND:
-        {
-            int wmId = LOWORD(wParam);
-            // Parse the menu selections:
-            switch (wmId)
-            {
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
-            }
-        }
-        break;
-    case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Add any drawing code that uses hdc here...
-            EndPaint(hWnd, &ps);
-        }
-        break;
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        break;
-    default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
-    }
-    return 0;
-}
+	PAINTSTRUCT ps;
+	HDC hdc;
 
-// Message handler for about box.
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    UNREFERENCED_PARAMETER(lParam);
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        return (INT_PTR)TRUE;
+	switch (message)
+	{
+	case WM_PAINT:
+		hdc = BeginPaint(hWnd, &ps);
+		EndPaint(hWnd, &ps);
+		break;
 
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-        }
-        break;
-    }
-    return (INT_PTR)FALSE;
+	case WM_DESTROY:
+		PostQuitMessage(0);
+		break;
+
+	case WM_SIZE:
+		if (pRenderer != nullptr) {
+			RECT rc;
+			GetClientRect(hWnd, &rc);
+			pRenderer->Resize(rc.right - rc.left, rc.bottom - rc.top);
+		}
+	default:
+		return DefWindowProc(hWnd, message, wParam, lParam);
+	}
+
+	return 0;
 }

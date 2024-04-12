@@ -1,23 +1,25 @@
-struct VSInput 
-{
-	float3 pos : POSITION;
+cbuffer WorldMatrixBuffer : register (b0) {
+	float4x4 worldMatrix;
+};
+
+cbuffer SceneMatrixBuffer : register (b1) {
+	float4x4 viewProjMatrix;
+}
+
+struct VSInput {
+	float3 position : POSITION;
 	float4 color : COLOR;
 };
 
-struct VSOutput 
-{
-	float4 pos : SV_POSITION;
+struct VSOutput {
+	float4 position : SV_POSITION;
 	float4 color : COLOR;
 };
 
+VSOutput vs(VSInput vertex) {
+	VSOutput result;
+	result.position = mul(viewProjMatrix, mul(worldMatrix, float4(vertex.position, 1.0f)));
+	result.color = vertex.color;
 
-VSOutput vs(VSInput vertex)
-{
-    VSOutput result;
-    
-	result.pos = float4(vertex.pos, 1.0);
-    result.color = vertex.color;
-	
-    return result;
-
+	return result;
 }
